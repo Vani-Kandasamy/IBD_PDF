@@ -5,6 +5,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 import os
+import asyncio  # Import asyncio to handle asynchronous code
 
 PDF_NAME = "pdf_chat_uploaded.pdf"
 
@@ -21,7 +22,7 @@ def empty_message_list():
     st.session_state.messages = []
 
 def extract_images_from_pdf(pdf_path):
-    #Extract images from a PDF and save them as PNG files.
+    """Extract images from a PDF and save them as PNG files."""
     pdf_document = fitz.open(pdf_path)
     images = []
 
@@ -46,6 +47,13 @@ def extract_images_from_pdf(pdf_path):
 
     pdf_document.close()
     return images
+
+async def get_response(pdf_name, message_list):
+    """Helper function to fetch responses from an async generator synchronously."""
+    responses = []
+    async for response in graph_streamer(pdf_name, message_list):
+        responses.append(response)
+    return ' '.join(responses)  # Join all responses if there are multiple parts
 
 # Initialize session state messages if not already done
 if "messages" not in st.session_state:
@@ -73,7 +81,7 @@ if uploaded_file:
     # Display chat messages
     st.subheader("Chat")
     for message in st.session_state.messages:
-        with st.container():  # Using a container here instead of st.chat_message
+        with st.container():
             st.write(f"**{message['role'].capitalize()}:** {message['content']}")
 
     # Input text for chat
@@ -85,8 +93,8 @@ if uploaded_file:
             st.write(f"**User:** {input_text}")
 
         with st.spinner("Generating response..."):
-            message_list = message_creator(st.session_state.messages)
-            response = graph_streamer(PDF_NAME, message_list)  # Assuming this function interacts with the PDF
+            # Run the async function in an event loop
+            response = asyncio.run(get_response(PDF_NAME, message_creator(st.session_state.messages)))
             st.session_state.messages.append({"role": "assistant", "content": response})
 
         with st.container():
