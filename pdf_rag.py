@@ -14,10 +14,15 @@ import base64
 import os
 import streamlit as st
 
+from typing import List
+from PyPDF2 import PdfReader
+from pdf2image import convert_from_path
+from PIL import Image
+
+
 import prompts as pt
 
-from pdf2image import convert_from_path
-import tempfile
+
 
 
 TEXT_MODEL = "text-embedding-ada-002"
@@ -39,13 +44,20 @@ llm = ChatOpenAI(model=LLM_MODEL, temperature=0)
 # create client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-
+'''
 # this is be default has the messages and add_messages reducers
 class BotState(MessagesState):
     pdf_path: str
     content: str
     accept_content: bool
     answer: str
+'''
+class BotState(BaseModel):
+    pdf_path: str
+    content: str
+    accept_content: bool
+    answer: str
+    image_paths: List[str] = Field(default_factory=list)
 
 
 class PdfChecker(BaseModel):
@@ -53,7 +65,7 @@ class PdfChecker(BaseModel):
 
 
 import PyPDF2
-
+'''
 def extract_text_from_pdf(pdf_path: str) -> str:
     pdf_text = ""
     # read the pdf
@@ -67,7 +79,19 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     final_text = pdf_text.strip().replace("\n", "")
 
     return final_text
+'''
 
+def extract_text_from_pdf(pdf_path: str) -> str:
+    pdf_text = ""
+    with open(pdf_path, 'rb') as file_:
+        reader = PdfReader(file_)
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                pdf_text += text
+    return pdf_text.strip().replace("\n", "")
+
+'''
 def convert_pdf_to_images(pdf_path: str) -> list:
     try:
         pages = convert_from_path(pdf_path)
@@ -84,7 +108,48 @@ def convert_pdf_to_images(pdf_path: str) -> list:
     except Exception as e:
         print(f"Error during conversion: {e}")
         return []
+'''
 
+def extract_images_from_pdf(pdf_path: str, output_folder: str) -> List[str]:
+    image_paths = []
+    reader = PdfReader(pdf_path)
+
+    for page_num in range(len(reader.pages)):
+        page = reader.pages[page_num]
+
+        try:
+            xObject = page['/Resources']['/XObject'].get_object()
+            for obj in xObject:
+                if xObject[obj]['/Subtype'] == '/Image':
+                    image_data = xObject[obj]
+                    base64_image = image_data.get_data()
+                    img = Image.frombytes("RGB", (image_data['/Width'], image_data['/Height']), base64_image)
+
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png', dir=output_folder) as img_file:
+                        img.save(img_file.name)
+                        image_paths.append(img_file.name)
+                        print(f"Image saved at {img_file.name}")
+
+        except Exception as e:
+            print(f"Error processing image on page {page_num}: {e}")
+
+    return image_paths
+
+def pdf_data_extractor_with_images(state: BotState):
+    pdf_path = state.pdf_path
+    # Extract text
+    extracted_text = extract_text_from_pdf(pdf_path)
+    # Extract images
+    with tempfile.TemporaryDirectory() as output_folder:
+        image_paths = extract_images_from_pdf(pdf_path, output_folder)
+
+    # Set state values
+    state.content = extracted_text
+    state.image_paths = image_paths
+
+    return state
+        
+'''
 def pdf_data_extractor_with_images(state: BotState):
     pdf_path = state["pdf_path"]
     # Extract text as before
@@ -98,7 +163,7 @@ def pdf_data_extractor_with_images(state: BotState):
 
     return {"content": extracted_text, "image_paths": image_paths}
 
-'''
+
 def pdf_data_extractor(state: BotState):
     pdf_path = state["pdf_path"]
     extracted_text = extract_text_from_pdf(pdf_path)
