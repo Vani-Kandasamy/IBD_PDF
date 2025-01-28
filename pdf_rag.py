@@ -16,6 +16,9 @@ import streamlit as st
 
 import prompts as pt
 
+from pdf2image import convert_from_path
+import tempfile
+
 
 TEXT_MODEL = "text-embedding-ada-002"
 NAMESPACE_KEY = "Keya"
@@ -65,13 +68,43 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
     return final_text
 
+def convert_pdf_to_images(pdf_path: str) -> list:
+    try:
+        pages = convert_from_path(pdf_path)
+        image_paths = []
 
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Save each page as a PNG file in a temporary directory
+            for i, page in enumerate(pages):
+                image_path = os.path.join(tmpdirname, f'page_{i + 1}.png')
+                page.save(image_path, 'PNG')
+                image_paths.append(image_path)
+
+        return image_paths
+    except Exception as e:
+        print(f"Error during conversion: {e}")
+        return []
+
+def pdf_data_extractor_with_images(state: BotState):
+    pdf_path = state["pdf_path"]
+    # Extract text as before
+    extracted_text = extract_text_from_pdf(pdf_path)
+    # Convert to images
+    image_paths = convert_pdf_to_images(pdf_path)
+
+    # You can handle the images as per your workflow, e.g., upload them or process them further
+    # This example simply logs the image paths
+    print("Extracted image paths:", image_paths)
+
+    return {"content": extracted_text, "image_paths": image_paths}
+
+'''
 def pdf_data_extractor(state: BotState):
     pdf_path = state["pdf_path"]
     extracted_text = extract_text_from_pdf(pdf_path)
 
     return {"content": extracted_text}
-
+'''
 
 def ibd_tester(state: BotState):
     extracted_pdf_text = state["content"]
@@ -119,14 +152,17 @@ def answer_generator(state: BotState, config: RunnableConfig):
 
 # add nodes and edges
 helper_builder = StateGraph(BotState)
-helper_builder.add_node("pdf_text_extractor", pdf_data_extractor)
+helper_builder.add_node("pdf_text_extractor_with_images", pdf_data_extractor_with_images)
+#helper_builder.add_node("pdf_text_extractor", pdf_data_extractor)
 helper_builder.add_node("ibd_tester", ibd_tester)
 helper_builder.add_node("guidelines_generator", user_guider)
 helper_builder.add_node("answer_generator", answer_generator)
 
 # build graph
-helper_builder.add_edge(START, "pdf_text_extractor")
-helper_builder.add_edge("pdf_text_extractor", "ibd_tester")
+#helper_builder.add_edge(START, "pdf_text_extractor")
+helper_builder.add_edge(START, "pdf_text_extractor_with_images")
+helper_builder.add_edge("pdf_text_extractor_with_images", "ibd_tester")
+#helper_builder.add_edge("pdf_text_extractor", "ibd_tester")
 helper_builder.add_conditional_edges("ibd_tester", conditional_checker, ["answer_generator", "guidelines_generator"])
 helper_builder.add_edge("guidelines_generator", END)
 helper_builder.add_edge("answer_generator", END)

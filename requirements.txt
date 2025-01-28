@@ -5,3 +5,5 @@ langchain-openai==0.2.14
 langgraph==0.2.60
 pinecone==5.4.2
 pypdf2
+pdf2image 
+pillow
