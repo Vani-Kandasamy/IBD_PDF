@@ -44,7 +44,7 @@ llm = ChatOpenAI(model=LLM_MODEL, temperature=0)
 # create client
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-'''
+
 # this is be default has the messages and add_messages reducers
 class BotState(MessagesState):
     pdf_path: str
@@ -58,14 +58,14 @@ class BotState(BaseModel):
     accept_content: bool
     answer: str
     image_paths: List[str] = Field(default_factory=list)
-
+'''
 
 class PdfChecker(BaseModel):
     pdf_related: bool = Field(None, description = "True if the pdf is about IBD disease else False")
 
 
 import PyPDF2
-'''
+
 def extract_text_from_pdf(pdf_path: str) -> str:
     pdf_text = ""
     # read the pdf
@@ -91,7 +91,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
                 pdf_text += text
     return pdf_text.strip().replace("\n", "")
 
-'''
+
 def convert_pdf_to_images(pdf_path: str) -> list:
     try:
         pages = convert_from_path(pdf_path)
@@ -109,7 +109,7 @@ def convert_pdf_to_images(pdf_path: str) -> list:
         print(f"Error during conversion: {e}")
         return []
 
-'''
+
 def extract_images_from_pdf(pdf_path: str, output_folder: str) -> List[str]:
     image_paths = []
     reader = PdfReader(pdf_path)
@@ -149,7 +149,7 @@ def pdf_data_extractor_with_images(state: BotState):
 
     return state
 
-'''
+
 def pdf_data_extractor_with_images(state: BotState):
     pdf_path = state["pdf_path"]
     # Extract text as before
@@ -162,14 +162,14 @@ def pdf_data_extractor_with_images(state: BotState):
     print("Extracted image paths:", image_paths)
 
     return {"content": extracted_text, "image_paths": image_paths}
-    
 
+'''
 def pdf_data_extractor(state: BotState):
     pdf_path = state["pdf_path"]
     extracted_text = extract_text_from_pdf(pdf_path)
 
     return {"content": extracted_text}
-'''
+
 
 def ibd_tester(state: BotState):
     extracted_pdf_text = state["content"]
@@ -217,17 +217,17 @@ def answer_generator(state: BotState, config: RunnableConfig):
 
 # add nodes and edges
 helper_builder = StateGraph(BotState)
-helper_builder.add_node("pdf_text_extractor_with_images", pdf_data_extractor_with_images)
-#helper_builder.add_node("pdf_text_extractor", pdf_data_extractor)
+#helper_builder.add_node("pdf_text_extractor_with_images", pdf_data_extractor_with_images)
+helper_builder.add_node("pdf_text_extractor", pdf_data_extractor)
 helper_builder.add_node("ibd_tester", ibd_tester)
 helper_builder.add_node("guidelines_generator", user_guider)
 helper_builder.add_node("answer_generator", answer_generator)
 
 # build graph
-#helper_builder.add_edge(START, "pdf_text_extractor")
-helper_builder.add_edge(START, "pdf_text_extractor_with_images")
-helper_builder.add_edge("pdf_text_extractor_with_images", "ibd_tester")
-#helper_builder.add_edge("pdf_text_extractor", "ibd_tester")
+helper_builder.add_edge(START, "pdf_text_extractor")
+#helper_builder.add_edge(START, "pdf_text_extractor_with_images")
+#helper_builder.add_edge("pdf_text_extractor_with_images", "ibd_tester")
+helper_builder.add_edge("pdf_text_extractor", "ibd_tester")
 helper_builder.add_conditional_edges("ibd_tester", conditional_checker, ["answer_generator", "guidelines_generator"])
 helper_builder.add_edge("guidelines_generator", END)
 helper_builder.add_edge("answer_generator", END)
