@@ -21,7 +21,7 @@ def empty_message_list():
     st.session_state.messages = []
 
 def extract_images_from_pdf(pdf_path):
-    """Extract images from a PDF and save them as PNG files."""
+    #Extract images from a PDF and save them as PNG files.
     pdf_document = fitz.open(pdf_path)
     images = []
 
