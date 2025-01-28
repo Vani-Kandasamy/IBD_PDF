@@ -91,7 +91,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
                 pdf_text += text
     return pdf_text.strip().replace("\n", "")
 
-'''
+
 def convert_pdf_to_images(pdf_path: str) -> list:
     try:
         pages = convert_from_path(pdf_path)
@@ -108,8 +108,8 @@ def convert_pdf_to_images(pdf_path: str) -> list:
     except Exception as e:
         print(f"Error during conversion: {e}")
         return []
-'''
 
+'''
 def extract_images_from_pdf(pdf_path: str, output_folder: str) -> List[str]:
     image_paths = []
     reader = PdfReader(pdf_path)
@@ -148,7 +148,7 @@ def pdf_data_extractor_with_images(state: BotState):
     state.image_paths = image_paths
 
     return state
-        
+
 '''
 def pdf_data_extractor_with_images(state: BotState):
     pdf_path = state["pdf_path"]
@@ -162,7 +162,7 @@ def pdf_data_extractor_with_images(state: BotState):
     print("Extracted image paths:", image_paths)
 
     return {"content": extracted_text, "image_paths": image_paths}
-
+'''
 
 def pdf_data_extractor(state: BotState):
     pdf_path = state["pdf_path"]
