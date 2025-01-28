@@ -20,6 +20,7 @@ def message_creator(list_of_messages: list) -> list:
 def empty_message_list():
     st.session_state.messages = []
 
+'''
 def extract_images_from_pdf(pdf_path):
     """Extract images from a PDF and save them as PNG files."""
     pdf_document = fitz.open(pdf_path)
@@ -32,6 +33,34 @@ def extract_images_from_pdf(pdf_path):
             base_image = pdf_document.extract_image(xref)
             image_bytes = base_image["image"]
             image = Image.open(io.BytesIO(image_bytes))
+            image_path = f"images/page_{page_number + 1}_image_{image_index + 1}.png"
+            os.makedirs(os.path.dirname(image_path), exist_ok=True)
+            image.save(image_path)
+            images.append(image_path)
+
+    pdf_document.close()
+    return images
+'''
+
+def extract_images_from_pdf(pdf_path):
+    """Extract images from a PDF and save them as PNG files."""
+    pdf_document = fitz.open(pdf_path)
+    images = []
+
+    for page_number in range(len(pdf_document)):
+        page = pdf_document.load_page(page_number)
+        for image_index, img in enumerate(page.get_images(full=True)):
+            xref = img[0]
+            base_image = pdf_document.extract_image(xref)
+            image_bytes = base_image["image"]
+
+            # Open the image using Pillow
+            image = Image.open(io.BytesIO(image_bytes))
+
+            # Convert CMYK images to RGB
+            if image.mode == "CMYK":
+                image = image.convert("RGB")
+
             image_path = f"images/page_{page_number + 1}_image_{image_index + 1}.png"
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
             image.save(image_path)
